@@ -61,7 +61,7 @@ Spatial interpolation requires the distance between two objects based on longitu
 ```math
 d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_p) \cos(\text{lat}_g) \sin^2\left(\frac{\Delta \text{lng}}{2}\right)}\right)
 ```
-
+where $R$ is the Earth's radius, set at 6,371 km; $\Delta \text{lat}$ is the difference between the latitude of the target property $\text{lat}_p$ and the latitude of the nearby apartment associated with Delentropy; $\Delta \text{lng}$ is the difference between the longitude of the target property $\text{lng}_p$ and the longitude of the nearby apartment associated with Delentropy.
    
 <p align="center">
   <img src = "/README_image/spatial interpolation.png" width = "60%"> <br>
