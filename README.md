@@ -4,8 +4,8 @@
 This repository demonstrates how to calculate sentiment index from text data using the KnuSentiLex sentiment dictionary and text review datasets. The project combines a tokenized review dataset and a sentiment lexicon to produce sentiment index for text data.
 
 Data in this repository consists of Excel and CSV files:
-- *Property Price and Sentiment.xlsx*: Aggregated hedonic dataset of 178,719 observations with hedonic variables
-- *Tokenized Review.xlsx*: Tokenized text data where each text entry is stored as a list of tokens 
+- *Property Price and Sentiment_`area`.xlsx*: Aggregated hedonic dataset of 178,719 observations with hedonic variables including sentiment index.
+- *Tokenized Review.xlsx*: Tokenized text data where each text entry is stored as a list of tokens.
 
 ## Sentiment Index Calculating
 The sentiment dictionary is loaded as a Pandas DataFrame using `pd.read_csv()`. It maps Korean words or phrases (`ngram`) to their sentiment scores (`max.value`).
