@@ -3,6 +3,10 @@
 # Sentiment Index Data Records
 This repository demonstrates how to calculate sentiment index from text data using the KnuSentiLex sentiment dictionary and text review datasets. The project combines a tokenized review dataset and a sentiment lexicon to produce sentiment index for text data.
 
+Data in this repository consists of Excel and CSV files:
+- *Property Price and Sentiment.xlsx*: Aggregated hedonic dataset of 178,719 observations with hedonic variables
+- *Tokenized Review.xlsx*: Tokenized text data where each text entry is stored as a list of tokens 
+
 ## Sentiment Index Calculating
 The sentiment dictionary is loaded as a Pandas DataFrame using `pd.read_csv()`. It maps Korean words or phrases (`ngram`) to their sentiment scores (`max.value`).
 
@@ -49,18 +53,8 @@ print(tokenized_data)
 ```
 
 ## Spatial Interpolation
-Spatial interpolation step can be utilized to remedy the uneven spatial distribution of GSV images.   
-To implement the spatial interpolation method, refer to the sample data file named *'Data.csv'* and *Street Greenness.csv*.    
+Spatial interpolation step can be utilized to remedy the uneven spatial distribution of GSV images.       
 The columns required to effectively manage the green index are as follows:   
-
-*Data.csv*
-- x: Longitude in the Cartesian coordinate system of the transaction point
-- y: Latitude in the Cartesian coordinate system of the transaction point
-   
-*Street Greenness.csv*
-- Longitude: Longitude of GSV image
-- Latitude: Latitude of GSV image
-- Green Index: Calculated street greenness
 
 Spatial interpolation requires the distance between two objects based on longitude and latitude. It can be obtained by using haversine formula as follows:
 
@@ -74,69 +68,55 @@ d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\D
   Figure 3. Graphical description of spatial interpolation.
 </p>   
 
-The following code uses above mathematical form and aggregates the green index with 50 images closest to the transaction point. The final result file is in *Green Index_Spatial Interpolation_bs.csv*.
+The following code uses above mathematical form and aggregates the green index with 100 images closest to the transaction point.
 ```python
 import pandas as pd
 import pandas as pd
 from haversine import haversine
 
-area = ['bs', 'dg', 'dj', 'gw']
+df = pd.read_excel(f'Your file path.xlsx')
+df['Sentiment'] = ''
 
-for i in range(0, len(area)):
-    name = area[i]
+df = df[df['Sentiment'].isna()].reset_index()
+dff = df[['Latitude', 'Longitude', 'Sentiment']].copy()
+dff = dff[dff['Sentiment'].notna()].drop_duplicates().reset_index(drop=True)
 
-    df = pd.read_excel(f'Delentropy\df_{name}.xlsx')
-    df['Delentropy'] = ''
-    delentropy = pd.read_csv(f'Delentropy\del_{name}.csv')
+Aggregated = []
+Aggregated_Distance = []
+df['Sentiment_d'] = ''
 
-    df['index'] = df['index'].astype(str)
-    delentropy['index'] = delentropy['index'].astype(str)
+a = 0
 
-    del_df = pd.merge(df, delentropy, on=['index'], how ='left')
-    del_df.drop(columns = ['Delentropy'], inplace=True)
-    del_df.to_excel(f'Delentropy\df_{name}_del.xlsx', index=False)
+for y, x, ind in zip(df['Latitude'], df['Longitude'], df.index):
+    distance = []
 
-    ## Spatial Interpolation
-    del_df_1 = del_df[del_df['delentropy'].isna()].reset_index()
-    dff = del_df[['Latitude', 'Longitude', 'delentropy']].copy()
-    dff = dff[dff['delentropy'].notna()].drop_duplicates().reset_index(drop=True)
+    for en_y, en_x, hgvi in zip(dff['Latitude'], dff['Longitude'], dff['Sentiment']):
+        dis = haversine([y,x], [en_y, en_x], unit='km')
+        distance.append([x,y,en_x,en_y,dis,hgvi])
+    dis_df = pd.DataFrame(distance)
+    dis_df.columns = ['x','y','en_x','en_y','distance','HGVI']
+    dis_df = dis_df.sort_values('distance', ascending=True)
 
-    Aggregated_Entropy = []
-    Aggregated_Entropy_Distance = []
-    del_df['delentropy_d'] = ''
+    # Extract the 100 nearest green indices
+    dis_df_100 = dis_df.iloc[:100]
 
-    a = 0
+    mean_hgvi_100 = dis_df_100['HGVI'].mean()
+    mean_dis_100 = dis_df_100['distance'].mean()
 
-    for y, x, ind in zip(del_df_1['Latitude'], del_df_1['Longitude'], del_df_1.index):
-        distance = []
+    Aggregated.append(mean_hgvi_100)
+    Aggregated_Distance.append(mean_dis_100)
 
-        for en_y, en_x, hgvi in zip(dff['Latitude'], dff['Longitude'], dff['delentropy']):
-            dis = haversine([y,x], [en_y, en_x], unit='km')
-            distance.append([x,y,en_x,en_y,dis,hgvi])
-        dis_df = pd.DataFrame(distance)
-        dis_df.columns = ['x','y','en_x','en_y','distance','HGVI']
-        dis_df = dis_df.sort_values('distance', ascending=True)
+    a += 1
 
-        # Extract the 100 nearest green indices
-        dis_df_100 = dis_df.iloc[:100]
+    print(a, '/', len(df))
 
-        mean_hgvi_100 = dis_df_100['HGVI'].mean()
-        mean_dis_100 = dis_df_100['distance'].mean()
+df['Sentiment'] = Aggregated
+df['Sentiment_d'] = Aggregated_Distance
 
-        Aggregated_Entropy.append(mean_hgvi_100)
-        Aggregated_Entropy_Distance.append(mean_dis_100)
+for i in range(0,len(del_df_1)):
+    df['Sentiment'][df['level_0'][i]] = Aggregated[i]
+    df['Sentiment_d'][df['level_0'][i]] = Aggregated_Distance[i]
 
-        a += 1
-
-        print(a, '/', len(del_df_1))
-
-    del_df_1['delntropy'] = Aggregated_Entropy
-    del_df_1['delentropy_d'] = Aggregated_Entropy_Distance
-
-    for i in range(0,len(del_df_1)):
-        del_df['delentropy'][del_df_1['level_0'][i]] = Aggregated_Entropy[i]
-        del_df['delentropy_d'][del_df_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
-
-    del_df.to_csv(f'Delentropy\spatial_interpolation_{name}.csv',index=False,encoding='utf-8-sig')
+df.to_csv(f'Property Price and Sentiment.xlsx',index=False,encoding='utf-8-sig')
 ```
-Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Hedonic Dataset.xlsx*.
+Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Property Price and Sentiment.xlsx*.
