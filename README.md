@@ -47,3 +47,96 @@ tokenized_data.to_csv(tokenized_data_path, index=False)
 # Print tokenized text data with sentiment scores
 print(tokenized_data)
 ```
+
+## Spatial Interpolation
+Spatial interpolation step can be utilized to remedy the uneven spatial distribution of GSV images.   
+To implement the spatial interpolation method, refer to the sample data file named *'Data.csv'* and *Street Greenness.csv*.    
+The columns required to effectively manage the green index are as follows:   
+
+*Data.csv*
+- x: Longitude in the Cartesian coordinate system of the transaction point
+- y: Latitude in the Cartesian coordinate system of the transaction point
+   
+*Street Greenness.csv*
+- Longitude: Longitude of GSV image
+- Latitude: Latitude of GSV image
+- Green Index: Calculated street greenness
+
+Spatial interpolation requires the distance between two objects based on longitude and latitude. It can be obtained by using haversine formula as follows:
+
+```math
+d_{\text{haversine}} = 2 \times R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_p) \cos(\text{lat}_g) \sin^2\left(\frac{\Delta \text{lng}}{2}\right)}\right)
+```
+
+   
+<p align="center">
+  <img src = "/README_image/spatial interpolation.png" width = "60%"> <br>
+  Figure 3. Graphical description of spatial interpolation.
+</p>   
+
+The following code uses above mathematical form and aggregates the green index with 50 images closest to the transaction point. The final result file is in *Green Index_Spatial Interpolation_bs.csv*.
+```python
+import pandas as pd
+import pandas as pd
+from haversine import haversine
+
+area = ['bs', 'dg', 'dj', 'gw']
+
+for i in range(0, len(area)):
+    name = area[i]
+
+    df = pd.read_excel(f'Delentropy\df_{name}.xlsx')
+    df['Delentropy'] = ''
+    delentropy = pd.read_csv(f'Delentropy\del_{name}.csv')
+
+    df['index'] = df['index'].astype(str)
+    delentropy['index'] = delentropy['index'].astype(str)
+
+    del_df = pd.merge(df, delentropy, on=['index'], how ='left')
+    del_df.drop(columns = ['Delentropy'], inplace=True)
+    del_df.to_excel(f'Delentropy\df_{name}_del.xlsx', index=False)
+
+    ## Spatial Interpolation
+    del_df_1 = del_df[del_df['delentropy'].isna()].reset_index()
+    dff = del_df[['Latitude', 'Longitude', 'delentropy']].copy()
+    dff = dff[dff['delentropy'].notna()].drop_duplicates().reset_index(drop=True)
+
+    Aggregated_Entropy = []
+    Aggregated_Entropy_Distance = []
+    del_df['delentropy_d'] = ''
+
+    a = 0
+
+    for y, x, ind in zip(del_df_1['Latitude'], del_df_1['Longitude'], del_df_1.index):
+        distance = []
+
+        for en_y, en_x, hgvi in zip(dff['Latitude'], dff['Longitude'], dff['delentropy']):
+            dis = haversine([y,x], [en_y, en_x], unit='km')
+            distance.append([x,y,en_x,en_y,dis,hgvi])
+        dis_df = pd.DataFrame(distance)
+        dis_df.columns = ['x','y','en_x','en_y','distance','HGVI']
+        dis_df = dis_df.sort_values('distance', ascending=True)
+
+        # Extract the 100 nearest green indices
+        dis_df_100 = dis_df.iloc[:100]
+
+        mean_hgvi_100 = dis_df_100['HGVI'].mean()
+        mean_dis_100 = dis_df_100['distance'].mean()
+
+        Aggregated_Entropy.append(mean_hgvi_100)
+        Aggregated_Entropy_Distance.append(mean_dis_100)
+
+        a += 1
+
+        print(a, '/', len(del_df_1))
+
+    del_df_1['delntropy'] = Aggregated_Entropy
+    del_df_1['delentropy_d'] = Aggregated_Entropy_Distance
+
+    for i in range(0,len(del_df_1)):
+        del_df['delentropy'][del_df_1['level_0'][i]] = Aggregated_Entropy[i]
+        del_df['delentropy_d'][del_df_1['level_0'][i]] = Aggregated_Entropy_Distance[i]
+
+    del_df.to_csv(f'Delentropy\spatial_interpolation_{name}.csv',index=False,encoding='utf-8-sig')
+```
+Through this process, we can get the green index for all points of transaction and all information of hedonic variables including green index is in *Hedonic Dataset.xlsx*.
